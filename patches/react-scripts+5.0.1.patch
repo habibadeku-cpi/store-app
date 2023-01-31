@@ -1,0 +1,91 @@
+diff --git a/node_modules/react-scripts/config/webpack.config.js b/node_modules/react-scripts/config/webpack.config.js
+index e465d8e..7980d1a 100644
+--- a/node_modules/react-scripts/config/webpack.config.js
++++ b/node_modules/react-scripts/config/webpack.config.js
+@@ -38,6 +38,11 @@ const getCacheIdentifier = require('react-dev-utils/getCacheIdentifier');
+ // @remove-on-eject-end
+ const createEnvironmentHash = require('./webpack/persistentCache/createEnvironmentHash');
+ 
++// module federation mfe config
++const deps = require(paths.appPackageJson).dependencies;
++require("dotenv").config({ path: paths.dotenv });
++const { ModuleFederationPlugin } = webpack.container;
++
+ // Source maps are resource heavy and can cause out of memory issue for large source files.
+ const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
+ 
+@@ -229,7 +234,12 @@ module.exports = function (webpackEnv) {
+       // webpack uses `publicPath` to determine where the app is being served from.
+       // It requires a trailing slash, or the file assets will get an incorrect path.
+       // We inferred the "public path" (such as / or /my-project) from homepage.
+-      publicPath: paths.publicUrlOrPath,
++      
++      
++                  // module federation mfe config
++                  publicPath: "auto", // publicPath: paths.publicUrlOrPath,
++
++
+       // Point sourcemap entries to original disk location (format as URL on Windows)
+       devtoolModuleFilenameTemplate: isEnvProduction
+         ? info =>
+@@ -677,7 +687,11 @@ module.exports = function (webpackEnv) {
+       //   can be used to reconstruct the HTML if necessary
+       new WebpackManifestPlugin({
+         fileName: 'asset-manifest.json',
+-        publicPath: paths.publicUrlOrPath,
++        
++                    // module federation mfe config
++                    publicPath: "auto", // publicPath: paths.publicUrlOrPath,
++
++
+         generate: (seed, files, entrypoints) => {
+           const manifestFiles = files.reduce((manifest, file) => {
+             manifest[file.name] = file.path;
+@@ -702,6 +716,47 @@ module.exports = function (webpackEnv) {
+         resourceRegExp: /^\.\/locale$/,
+         contextRegExp: /moment$/,
+       }),
++
++                  // module federation mfe config
++                  new ModuleFederationPlugin({
++                    name: "store_app",
++                    filename: "remoteEntry.js",
++                    exposes: {
++                      // expose each component
++                      // "./TestReact16": `${paths.appSrc}/components/test-react16-component/test-react16-component`,
++                    },
++                    remoteType: "var",
++                    remotes: {
++                      // host: 'host@http://localhost:3001/remoteEntry.js',
++                      // host: "host",
++                    },
++                    shared: {
++                      ...deps,
++                      react: { singleton: true, eager: true, requiredVersion: deps.react },
++                      "react-dom": {
++                        singleton: true,
++                        eager: true,
++                        requiredVersion: deps["react-dom"],
++                      },
++                      "react-router-dom": {
++                        singleton: true,
++                        eager: true,
++                        requiredVersion: deps["react-router-dom"],
++                      },
++                      "react-redux": {
++                        singleton: true,
++                        eager: true,
++                        requiredVersion: deps["react-redux"],
++                      },
++                      "@reduxjs/toolkit": {
++                        singleton: true,
++                        eager: true,
++                        requiredVersion: deps["@reduxjs/toolkit"],
++                      }
++                    },
++                  }),
++
++
+       // Generate a service worker script that will precache, and keep up to date,
+       // the HTML & assets that are part of the webpack build.
+       isEnvProduction &&
